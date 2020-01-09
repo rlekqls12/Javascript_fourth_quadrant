@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<head>
+    <title>Math</title>
+</head>
+<body style="margin: 0px; overflow: hidden">
+    <canvas id="cvs"></canvas>
+    <script>
+        var cvs, ctx;
+        // cwh : 캔버스 크기, bwh : 박스 가로세로 개수, bowh : 중심에 0, 0이 오게하기 위한 변수
+        var boxSize = 50, cw, ch, bw, bh, bow, boh;
+        // plusXY : 시점 XY, calcXY : 마우스 이벤트 받는 동안 계산하는 시점 XY, mxy : 마우스 좌표, mc : 마우스 클릭 여부
+        var plusX, plusY, calcX, calcY, mx, my, mc;
+        // fs : 폰트 사이즈, equations : 방정식들, colors : 방정식들 랜덤 색상
+        var fs = 0, equations = ["y = x", "y = x * x", "y = Math.sqrt(x)", "y = x * x * x"], colors = [];
+
+        window.onload = function() {
+            cvs = document.getElementById("cvs")
+            ctx = cvs.getContext("2d")
+
+            var i;
+            for (i = 0; i < equations.length; i++) {
+                colors[i] = "#" + (Math.floor(Math.random() * 599999) + 400000);
+            }
+
+            mx = -500; my = -500; mc = false;
+            calcX = 0; calcY = 0;
+            plusX = 0; plusY = 0;
+
+            onresize()
+
+            setInterval(draw, 1000/240)
+        }
+
+        window.onresize = function() {
+            cvs.width = window.innerWidth
+            cvs.height = window.innerHeight
+
+            cw = cvs.width;
+            ch = cvs.height;
+
+            bw = Math.ceil(cw / boxSize) + 1;
+            bh = Math.ceil(ch / boxSize) + 1;
+
+            bow = 0; boh = 0;
+            if (bw  % 2 == 1)
+                bow += boxSize / 2;
+            if (bh  % 2 == 1)
+                boh += boxSize / 2;
+            bow += boxSize - (cw % boxSize) / 2;
+            boh += boxSize - (ch % boxSize) / 2;
+
+            if (bw % 2 == 1) bw ++;
+            if (bh % 2 == 1) bh ++;
+            
+            fs = Math.floor(Math.sqrt(boxSize * 7.5));
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = fs + "px sans-serif";
+
+            draw();
+        }
+
+        window.onmouseup = function() {
+            mx = event.clientX;
+            my = event.clientY;
+            if (mc) {
+                plusX += calcX;
+                plusY += calcY;
+                calcX = 0; calcY = 0;
+                mc = false;
+            }
+        }
+
+        window.onmousemove = function() {
+            if (mc) {
+                calcX = event.clientX - mx;
+                calcY = event.clientY - my;
+            } else {
+                mx = event.clientX;
+                my = event.clientY;
+            }
+        }
+        
+        window.onmousedown = function() {
+            mx = event.clientX;
+            my = event.clientY;
+            if ((cw - 50 <= mx && mx <= cw) &&
+                (0 <= my && my <= 50)) {
+                plusX = 0; plusY = 0;
+                calcX = 0; calcY = 0;
+                mx = 0; my = 0;
+                mc = false;
+            } else {
+                mc = true;
+            }
+        }
+
+        window.onmousewheel = function() {
+            if (event.deltaY < 0 && boxSize < Math.floor((cw + ch) / 8)) {
+                plusX *= (boxSize + 4) / boxSize;
+                plusY *= (boxSize + 4) / boxSize;
+                boxSize += 4;
+            }
+            if (event.deltaY >= 0 && boxSize > 10) {
+                plusX *= (boxSize - 4) / boxSize;
+                plusY *= (boxSize - 4) / boxSize;
+                boxSize -= 4;
+            }
+
+            onresize();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+            var PX, PY, PXN, PYN;
+            PX = (plusX + calcX);
+            PY = (plusY + calcY);
+            PXN = PX % boxSize;
+            PYN = PY % boxSize,
+
+            ctx.fillStyle = "#f77";
+            ctx.strokeStyle = "#ccc";
+            ctx.lineWidth = 1;
+
+            // draw Boxes
+            var x, y;
+            for (y = 0; y < bh; y++)
+                for (x = 0; x < bw; x++)
+                    ctx.strokeRect(x * boxSize - bow + PXN, y * boxSize - boh + PYN, boxSize, boxSize);
+
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 3;
+
+            // draw Main Line
+            if (Math.abs(PX) <= cw / 2) {
+                ctx.beginPath();
+                ctx.moveTo((bw / 2) * boxSize - bow + PX, 0);
+                ctx.lineTo((bw / 2) * boxSize - bow + PX, ch);
+                ctx.stroke();
+                ctx.closePath();
+            }
+            if (Math.abs(PY) <= ch / 2) {
+                ctx.beginPath();
+                ctx.moveTo(0, (bh / 2) * boxSize - boh + PY);
+                ctx.lineTo(cw, (bh / 2) * boxSize - boh + PY);
+                ctx.stroke();
+                ctx.closePath();
+            }
+
+            // draw Center Dot
+            ctx.fillStyle = "#333";
+            ctx.beginPath();
+            ctx.arc((bw / 2) * boxSize - bow + PX, (bh / 2) * boxSize - boh + PY, 5, 0, 6.28, false);
+            ctx.fill();
+            ctx.closePath();
+
+            // draw Main Line Text
+            ctx.fillStyle = "#f77";
+            var PBX = Math.floor(PX / boxSize), PBY = Math.floor(PY / boxSize), EX = 0, EY = 0;
+            for (x = 0; x < bw; x++) {
+                if (Math.abs(PY) <= ch / 2 - fs) EY = (bh / 2) * boxSize - boh + PY;
+                else  EY = (PY > 0 ? ch - fs * 2 : fs * 2);
+
+                if (PX >= 0 || PX == -(bw / 2 - 1) * boxSize)
+                    ctx.fillText((x - bw / 2) - PBX,
+                                    x * boxSize - bow + PXN,
+                                    EY);
+                else
+                    ctx.fillText((x - bw / 2) - PBX, 
+                                    (x + 1) * boxSize - bow + PXN, 
+                                    EY);
+            }
+
+            for (y = 0; y < bh; y++) {
+                if (Math.abs(PX) <= cw / 2 - fs) EX = (bw / 2) * boxSize - bow + PX;
+                else  EX = (PX > 0 ? cw - fs * 2 : fs  * 2);
+
+                if (PY >= 0 || PY == -(bh / 2 - 1) * boxSize)
+                    ctx.fillText((y - bh / 2) - PBY, 
+                                EX,
+                                y * boxSize - boh + PYN);
+                else
+                    ctx.fillText((y - bh / 2) - PBY, 
+                                EX, 
+                                (y + 1) * boxSize - boh + PYN);
+            }
+
+            // draw Math
+            var i, c = true;
+            for (i = 0; i < equations.length; i++) {
+                ctx.strokeStyle = colors[i];
+
+                x = -PBX - bw;
+                eval(equations[i]);
+                ctx.beginPath();
+                ctx.moveTo((bw / 2) * boxSize - bow + PX + x * boxSize, (bh / 2) * boxSize - boh + PY + y * boxSize, 1, 0, 6.28, false);
+
+                for (x = -PBX - (bw - 1); x < -PBX + bw; x += 0.25) {
+                    eval(equations[i]);
+                    if (c) {
+                        ctx.lineTo((bw / 2) * boxSize - bow + PX + x * boxSize, (bh / 2) * boxSize - boh + PY + y * boxSize, 1, 0, 6.28, false);
+                        ctx.stroke();
+                        ctx.closePath();
+                        ctx.beginPath();
+                        ctx.moveTo((bw / 2) * boxSize - bow + PX + x * boxSize, (bh / 2) * boxSize - boh + PY + y * boxSize, 1, 0, 6.28, false);
+                        c = false;
+                    } else {
+                        ctx.lineTo((bw / 2) * boxSize - bow + PX + x * boxSize, (bh / 2) * boxSize - boh + PY + y * boxSize, 1, 0, 6.28, false);
+                        ctx.stroke();
+                        ctx.closePath();
+                        ctx.beginPath();
+                        ctx.moveTo((bw / 2) * boxSize - bow + PX + x * boxSize, (bh / 2) * boxSize - boh + PY + y * boxSize, 1, 0, 6.28, false);
+                        c = true;
+                    }
+                }
+
+                x += 0.25;
+                ctx.lineTo((bw / 2) * boxSize - bow + PX + x * boxSize,
+                                (bh / 2) * boxSize - boh + PY + y * boxSize,
+                                1, 0, 6.28, false);
+                ctx.stroke();
+                ctx.closePath();
+            }
+
+            // draw Go to Zero.Zero
+            fs = Math.floor(Math.sqrt((cw + ch) / 3.14));
+            ctx.font = fs + "px sans-serif";
+            ctx.fillStyle = "#7777779f";
+            ctx.beginPath();
+            ctx.rect(cw - 50, 0, 50, 50);
+            ctx.fill();
+            ctx.fillStyle = "#000";
+            ctx.fillText("Go 0", cw - 25, 25);
+            ctx.closePath();
+
+            // draw Is mouse on equations?
+            c = [];
+            var ox, oy, tx, ty, dx, dy, bt, bsX, bsY;
+                ox = (mx + bow - PXN) / boxSize;
+                oy = (my + boh - PYN) / boxSize;
+                tx = (ox - bw / 2) - PBX;
+                ty = (oy - bh / 2) - PBY;
+
+            for (i = 0; i < equations.length; i++) {
+                tx -= (PX < 0 ? 1 : 0); x = tx;
+                eval(equations[i]);
+                // ------PX, PY가 음수가 되는 순간 x, y값 보정------
+                if (PX < 0) { tx += 1; x = tx; }
+                ty -= (PY < 0 ? 0.1 : 0); y += (PY < 0 ? 1 : 0);
+                // -----------------------------------------------
+                if (Math.abs(y - ty) <= 1) {
+                    c[c.length] = i;
+                    dx = (x + PBX + bw / 2) * boxSize - bow + PXN;
+                    dy = (y + PBY + bh / 2) * boxSize - boh + PYN;
+                }
+            }
+
+            if (c.length > 0) {
+                var sols = [];
+                bsX = 0;
+                x = (Math.round((tx - (PX < 0 ? 1 : 0)) * 10)/10);
+                for (i = 0; i < c.length; i++) {
+                    eval(equations[c[i]]);
+                    y = (Math.round(y * 100)/100);
+                    bt = equations[c[i]] + " → " + y;
+                    if (bsX < fs * Math.sqrt(bt.length * 10)) bsX = fs * Math.sqrt(bt.length * 10);
+                    sols[i] = bt;
+                }
+                bsY = fs * (c.length + 1);
+
+                if (cw - mx < bsX) dx -= bsX;
+                if (ch - my < bsY) dy -= bsY;
+
+                fs = Math.floor(Math.sqrt((cw + ch) / 6.28));
+                ctx.font = fs + "px sans-serif";
+
+                ctx.fillStyle = "#777777ee";
+                ctx.beginPath();
+                ctx.rect(dx, dy, bsX, bsY);
+                ctx.fill();
+                for (i = 0; i < c.length; i++) {
+                    ctx.textAlign = "start";
+                    ctx.fillStyle = colors[c[i]];
+                    ctx.fillText("●", dx + bsX / 64, dy + fs * (i + 2));
+
+                    ctx.textAlign = "center";
+                    ctx.fillStyle = "#333";
+                    ctx.fillText(sols[i], dx + bsX / 2, dy + fs * (i + 2));
+                }
+                ctx.fillText("[x = " + x + "]", dx + bsX / 2, dy + fs);
+                ctx.closePath();
+
+                if (cw - mx < bsX) dx += bsX;
+                if (ch - my < bsY) dy += bsY;
+
+                ctx.beginPath();
+                ctx.arc(dx, dy, fs/6, 0, 6.28, false);
+                ctx.fill();
+                ctx.closePath();
+            }
+            // else {
+            //     // draw Mouse Point & now Point
+            //     ox = Math.floor((mx + bow - PXN + boxSize / 2) / boxSize);
+            //     oy = Math.floor((my + boh - PYN + boxSize / 2) / boxSize);
+            //     tx = (ox - bw / 2) - PBX;
+            //     ty = (oy - bh / 2) - PBY;
+            //     dx = ox * boxSize - bow + PXN;
+            //     dy = oy * boxSize - boh + PYN;
+            //     if (PX < 0 && PX != -(bw / 2 - 1) * boxSize) tx--;
+            //     if (PY < 0 && PY != -(bh / 2 - 1) * boxSize) ty--;
+            //     bt = tx + ", " + ty;
+            //     bsX = fs * (bt.length - 2);
+            //     bsY = fs * 2;
+
+            //     if (!mc) {
+            //         if (cw - mx < bsX) dx -= bsX;
+            //         if (ch - my < bsY) dy -= bsY;
+
+            //         ctx.fillStyle = "#777777ee";
+            //         ctx.beginPath();
+            //         ctx.rect(dx, dy, bsX, bsY);
+            //         ctx.fill();
+            //         ctx.fillStyle = "#333";
+            //         ctx.fillText(bt, dx + bsX / 2, dy + bsY / 2);
+            //         ctx.closePath();
+
+            //         if (cw - mx < bsX) dx += bsX;
+            //         if (ch - my < bsY) dy += bsY;
+
+            //         ctx.beginPath();
+            //         ctx.arc(dx, dy, fs/6, 0, 6.28, false);
+            //         ctx.fill();
+            //         ctx.closePath();
+            //     }
+            //}
+
+            fs = Math.floor(Math.sqrt(boxSize * 7.5));
+            ctx.font = fs + "px sans-serif";
+
+
+            ///******* DEBUG *******///
+            // var hei = 0;
+            // ctx.fillStyle = "#777777ee";
+            // ctx.beginPath();
+            // ctx.rect(50, 50, 200, 20 * (10 + 1));
+            // ctx.fill();
+            // ctx.fillStyle = "#000";
+            // ctx.textAlign = "start";
+            // ctx.fillText("box : " + boxSize, 60, 70 + hei++ * 20);
+            // ctx.fillText("b : " + bw + ", " + bh, 60, 70 + hei++ * 20);
+            // ctx.fillText("bo : " + bow + ", " + boh, 60, 70 + hei++ * 20);
+            // ctx.fillText("P : " + PX + ", " + PY, 60, 70 + hei++ * 20);
+            // ctx.fillText("PN : " + PXN + ", " + PYN, 60, 70 + hei++ * 20);
+            // ctx.fillText("PB : " + PBX + ", " + PBY, 60, 70 + hei++ * 20);
+            // ctx.fillText("M : " + mx + ", " + my, 60, 70 + hei++ * 20);
+            // ctx.fillText("o_bef : " + (mx + bow - PXN) + ", " + (my + boh - PYN), 60, 70 + hei++ * 20);
+            // ctx.fillText("o : " + ((mx + bow - PXN) / boxSize) + ", " + ((my + boh - PYN) / boxSize), 60, 70 + hei++ * 20);
+            // ctx.fillText("t : " + tx + ", " + ty, 60, 70 + hei++ * 20);
+            // ctx.closePath();
+            // ctx.textAlign = "center";
+        }
+    </script>
+</body>
+</html>
